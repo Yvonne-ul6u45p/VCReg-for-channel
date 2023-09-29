@@ -17,17 +17,17 @@ class VCReg(nn.Module):
         cov_loss=0
 
         # ε=0.0001  γ=1
-        if self.args.std_use:
+        if not self.args.no_std:
             y_reshape= y.view(y.size(1),y.size(0), y.size(2)) # change shape [b, c, hw]  to [c, b, hw ]
 
             h_yj_sum=0
             for j in range(y.size(1)):
                 std_yj = torch.sqrt(y_reshape[j].var(dim=0)+ 0.0001)   
-                h_yj_sum = h_yj_sum + torch.mean(F.relu(1 - std_yj))   #hinge func has hw values, need to get mean 
+                h_yj_sum = h_yj_sum + torch.mean(F.relu(1 - std_yj, inplace=True))   #hinge func has hw values, need to get mean 
             std_loss = h_yj_sum / y.size(1)
 
 
-        if self.args.cov_use:
+        if not self.args.no_cov:
             y_mean= self.get_batch_mean_y(y,self.args.batch_size) # y bar
             cov_y = self.get_cov_matrix_y(y,y_mean,self.args.batch_size)
             cov_loss = self.off_diagonal(cov_y).pow_(2).sum().div(y.size(1))
@@ -69,8 +69,8 @@ def get_arguments():
                         help='Variance regularization loss coefficient')
     parser.add_argument("--cov_coeff", type=float, default=1.0,
                         help='Covariance regularization loss coefficient')
-    parser.add_argument("--std_use", action="store_false", help="use variance term or not")# store_true -> false
-    parser.add_argument("--cov_use", action="store_false", help="use covariance term or not")# store_false -> true
+    parser.add_argument("--no_std", action="store_true", default=False, help="use variance term or not")
+    parser.add_argument("--no_cov", action="store_true", default=False, help="use covariance term or not")
 
     return parser
 
